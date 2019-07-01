@@ -1,5 +1,11 @@
 set(SS_LIBRARY screenspace)
 set(SS_SOURCE_FILES
+
+        screenspace/CustomGeometryOverride.cc
+        screenspace/CustomGeometryOverride.hh
+        screenspace/CustomShape.cc
+        screenspace/CustomShape.hh
+
         screenspace/PickerDrawOverride.cc
         screenspace/PickerDrawOverride.hh
         screenspace/PickerShape.cc

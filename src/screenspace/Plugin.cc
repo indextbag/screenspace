@@ -4,6 +4,9 @@
 #include "screenspace/commands/AddCommand.hh"
 #include "screenspace/commands/RemoveCommand.hh"
 
+#include "screenspace/CustomShape.hh"
+#include "screenspace/CustomGeometryOverride.hh"
+
 #include <maya/MGlobal.h>
 #include <maya/MFnPlugin.h>
 #include <maya/MDrawRegistry.h>
@@ -43,11 +46,30 @@ MStatus initializePlugin(MObject obj) {
                                &PickerDrawOverride::classifcation);
   CHECK_MSTATUS(status);
 
+
   status = MHWRender::MDrawRegistry::registerDrawOverrideCreator(
       PickerDrawOverride::classifcation,
       PickerDrawOverride::id,
       PickerDrawOverride::creator);
   CHECK_MSTATUS(status);
+
+  // ---------------------------------------------------------------------------
+
+  status = plugin.registerNode(CustomShape::typeName,
+                               CustomShape::id,
+                               &CustomShape::creator,
+                               &CustomShape::initialize,
+                               MPxNode::kSurfaceShape,
+                               &CustomGeometryOverride::classifcation);
+  CHECK_MSTATUS(status);
+
+  status = MHWRender::MDrawRegistry::registerGeometryOverrideCreator(
+      CustomGeometryOverride::classifcation,
+      CustomGeometryOverride::id,
+      CustomGeometryOverride::creator);
+  CHECK_MSTATUS(status);
+
+  // ---------------------------------------------------------------------------
 
   status = plugin.registerCommand(AddCommand::typeName,
                                   AddCommand::creator,
