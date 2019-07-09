@@ -256,7 +256,7 @@ void prepareMatrix(const MDagPath& pickablePath,
   data->m_matrix = screenWorldMatrix * pickablePath.inclusiveMatrixInverse();
 }
 
-/// Prepare geometry to be drawn.
+/// Prepare geometry to be drawn. Geometry origin should be bottom left.
 /// \param pickablePath Path to pickable.
 /// \param cameraPath Path to camera.
 /// \param frameContext Viewport frame context.
@@ -286,30 +286,31 @@ void prepareGeometry(const MDagPath& pickablePath,
     {
       geometry.primitive = MUIDrawManager::Primitive::kTriangles;
 
-      const std::size_t num = 16;
-      float increment = 2.0 * M_PI / float(num);
+      const float radius = 0.5f;
+      const std::size_t slices = 16;
+      const float increment = 2.0 * M_PI / float(slices);
 
       // Center
-      geometry.vertices.append(MPoint(0.0f, 0.0f, 0.0f, 1.0f));
+      geometry.vertices.append(MPoint(radius, radius, 0.0f, 1.0f));
       geometry.normals.append(MVector(0.0f, 0.0f, 1.0f));
       geometry.colors.append(color);
 
-      // Outside
-      for (std::size_t i = 0; i <= num; ++i) {
-        float angle = increment * i;
-        geometry.vertices.append(MPoint(cosf(angle), sinf(angle), 0.0f, 1.0f));
+      // Slices
+      for (std::size_t i = 0; i <= slices; ++i) {
+        const float angle = increment * i;
+        geometry.vertices.append(MPoint(radius * cosf(angle) + 0.5f, radius * sinf(angle) + 0.5f, 0.0f, 1.0f));
         geometry.normals.append(MVector(0.0f, 0.0f, 1.0f));
         geometry.colors.append(color);
       }
 
       // Indices
-      for (std::size_t i = 0; i < num; ++i) {
+      for (std::size_t i = 0; i < slices; ++i) {
         geometry.indices.append(0);
         geometry.indices.append(i);
         geometry.indices.append(i + 1);
       }
       geometry.indices.append(0);
-      geometry.indices.append(num);
+      geometry.indices.append(slices);
       geometry.indices.append(1);
       break;
     }
@@ -335,7 +336,7 @@ void prepareGeometry(const MDagPath& pickablePath,
 
   // Apply transformation
   for (std::size_t i = 0; i < geometry.vertices.length(); ++i)
-    geometry.vertices[i] = data->m_matrix.transpose() * geometry.vertices[i];
+    geometry.vertices[i] = data->matrix().transpose() * geometry.vertices[i];
 
   data->m_geometry = geometry;
 }
