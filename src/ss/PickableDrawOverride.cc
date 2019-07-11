@@ -37,6 +37,7 @@ struct Geometry {
   MVectorArray normals;                 // Per-vertex normal
   MColorArray colors;                   // Per-vertex color
   MUintArray indices;                   // Poly indices
+  MBoundingBox bounds;
 };
 
 /// Style helper
@@ -281,6 +282,9 @@ void prepareGeometry(const MDagPath& pickablePath,
   CHECK_MSTATUS(MPlug(pickableObj, pickableCls.attribute("shape")).getValue(_shape));
   Shape shape = static_cast<Shape>(_shape);
 
+  MTransformationMatrix rotate;
+  rotate.setToRotationAxis(MVector(0,0,1), data->style().rotate.asRadians());
+
   Geometry geometry;
 
   switch(shape)
@@ -310,10 +314,12 @@ void prepareGeometry(const MDagPath& pickablePath,
         geometry.indices.append(0);
         geometry.indices.append(i);
         geometry.indices.append(i + 1);
+        geometry.bounds.expand(geometry.vertices[i]);
       }
       geometry.indices.append(0);
       geometry.indices.append(num);
       geometry.indices.append(1);
+      geometry.bounds.expand(geometry.vertices[num]);
       break;
     }
     case Shape::Rectangle:
@@ -329,8 +335,11 @@ void prepareGeometry(const MDagPath& pickablePath,
         geometry.colors.append(color);
       }
 
-      for (unsigned int index: {0, 1, 2, 0, 2, 3})
-        geometry.indices.append(index);
+      for (unsigned int i: {0, 1, 2, 0, 2, 3})
+      {
+        geometry.indices.append(i);
+        geometry.bounds.expand(geometry.vertices[i]);
+      }
 
       break;
     }
@@ -346,21 +355,31 @@ void prepareGeometry(const MDagPath& pickablePath,
         geometry.colors.append(color);
       }
 
-      for (unsigned int index: {0, 1, 2})
-        geometry.indices.append(index);
+      for (unsigned int i: {0, 1, 2})
+      {
+        geometry.indices.append(i);
+        geometry.bounds.expand(geometry.vertices[i]);
+      }
 
       break;
     }
   }
 
-  SS_DEBUG << "rotate: " << data->style().rotate.asDegrees();
-
-  MTransformationMatrix rotate;
-  rotate.rotateBy(MEulerRotation(0, 0, data->style().rotate.asRadians()), MSpace::kTransform);
+  SS_DEBUG << "center=" << geometry.bounds.center();
 
   // Apply transformation
   for (std::size_t i = 0; i < geometry.vertices.length(); ++i)
-    geometry.vertices[i] = (rotate.asMatrix() * data->m_matrix).transpose() * geometry.vertices[i];
+  {
+    MPoint vertex = geometry.vertices[i];
+
+    // Needs to be part of matrix
+    vertex -= geometry.bounds.center();
+    vertex = rotate.asMatrix().transpose() * vertex;
+    vertex += geometry.bounds.center();
+
+    vertex = data->m_matrix.transpose() * vertex;
+    geometry.vertices[i] = vertex;
+  }
 
   data->m_geometry = geometry;
 }
