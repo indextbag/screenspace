@@ -4,7 +4,9 @@
 #include "ss/PickableShape.hh"
 #include "ss/Types.hh"
 
+#include <maya/MAngle.h>
 #include <maya/MColorArray.h>
+#include <maya/MEulerRotation.h>
 #include <maya/MFnDependencyNode.h>
 #include <maya/MNodeClass.h>
 #include <maya/MPlug.h>
@@ -40,6 +42,7 @@ struct Geometry {
 /// Style helper
 struct Style {
   Shape shape;   // Draw shape
+  MAngle rotate; // Angle in degrees
   MColor color;  // Shape color
 };
 
@@ -350,9 +353,14 @@ void prepareGeometry(const MDagPath& pickablePath,
     }
   }
 
+  SS_DEBUG << "rotate: " << data->style().rotate.asDegrees();
+
+  MTransformationMatrix rotate;
+  rotate.rotateBy(MEulerRotation(0, 0, data->style().rotate.asRadians()), MSpace::kTransform);
+
   // Apply transformation
   for (std::size_t i = 0; i < geometry.vertices.length(); ++i)
-    geometry.vertices[i] = data->m_matrix.transpose() * geometry.vertices[i];
+    geometry.vertices[i] = (rotate.asMatrix() * data->m_matrix).transpose() * geometry.vertices[i];
 
   data->m_geometry = geometry;
 }
@@ -375,8 +383,12 @@ void prepareStyle(const MDagPath& pickableDag,
   CHECK_MSTATUS(colorData.getData(color.r, color.g, color.b));
   CHECK_MSTATUS(MPlug(pickableObj, pickableCls.attribute("opacity")).getValue(color.a));
 
+  MAngle rotate;
+  CHECK_MSTATUS(MPlug(pickableObj, pickableCls.attribute("rotate")).getValue(rotate));
+
   Style style;
   style.color = color;
+  style.rotate = rotate;
   data->m_style = style;
 }
 
@@ -422,8 +434,8 @@ MUserData* PickableDrawOverride::prepareForDraw(const MDagPath& pickableDag,
 
   // Prepare
   prepareMatrix(pickableDag, cameraDag, frameContext, data);
-  prepareGeometry(pickableDag, cameraDag, frameContext, data);
   prepareStyle(pickableDag, cameraDag, frameContext, data);
+  prepareGeometry(pickableDag, cameraDag, frameContext, data);
 
   return data;
 }
